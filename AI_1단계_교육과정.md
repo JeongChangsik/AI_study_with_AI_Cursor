@@ -20,6 +20,11 @@
 - AI vs 머신러닝 vs 딥러닝의 차이점
 - AI의 현재와 미래
 
+**👨‍💻 작성자 참고 자료:**
+- [네이버 AI 스쿨](https://ai.naver.com/) - AI 기초 개념 강의
+    - https://bizschool.naver.com/online/course/65144/lecture/1461729?currentTab=curriculum
+
+
 ### 2. 머신러닝 기초
 ![Machine Learning Basics](images/machine_learning_basics.png)
 
@@ -27,6 +32,9 @@
 - 지도학습 vs 비지도학습
 - 분류와 회귀 문제
 - 모델 평가 방법
+
+**👨‍💻 작성자 참고 자료:**
+
 
 ### 3. 데이터 처리 기초
 ![Data Processing](images/data_processing.png)
