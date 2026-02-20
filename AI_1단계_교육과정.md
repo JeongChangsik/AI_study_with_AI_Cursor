@@ -13,7 +13,6 @@
 ## 📊 주요 학습 영역
 
 ### 1. AI 기초 개념
-![AI Basic Concepts](images/ai_basic_concepts.png)
 
 **핵심 내용:**
 - 인공지능의 정의와 역사
@@ -26,7 +25,6 @@
 
 
 ### 2. 머신러닝 기초
-![Machine Learning Basics](images/machine_learning_basics.png)
 
 **학습 요소:**
 - 지도학습 vs 비지도학습
@@ -37,7 +35,6 @@
 
 
 ### 3. 데이터 처리 기초
-![Data Processing](images/data_processing.png)
 
 **중요 개념:**
 - 데이터 전처리
@@ -88,7 +85,6 @@
 ## 📋 실습 프로젝트
 
 ### 1. 이미지 분류 프로젝트
-![Image Classification](images/image_classification.png)
 
 **목표:** 간단한 이미지 분류 모델 만들기
 - MNIST 데이터셋 활용
@@ -96,7 +92,6 @@
 - 결과 시각화
 
 ### 2. 데이터 시각화 프로젝트
-![Data Visualization](images/data_visualization.png)
 
 **목표:** 다양한 차트와 그래프 만들기
 - matplotlib, seaborn 활용
