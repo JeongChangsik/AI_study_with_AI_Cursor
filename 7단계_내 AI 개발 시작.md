@@ -14,7 +14,10 @@
 1. 프로젝트 문제정의 문서를 작성할 수 있다.  
 2. 베이스라인 모델을 만들고 성능 기준선을 확보할 수 있다.  
 3. 실험 기록 체계(파라미터/데이터 버전/결과)를 운영할 수 있다.  
-4. 배포 후 모니터링과 재학습 조건을 정의할 수 있다.
+4. 배포 후 모니터링과 재학습 조건을 정의할 수 있다.  
+5. 데이터 계약(schema/range/null ratio)과 피처 일관성 점검을 설계할 수 있다.  
+6. 모델 레지스트리/릴리스 게이트를 운영 기준으로 문서화할 수 있다.  
+7. 오프라인-온라인 성능 격차를 측정하고 완화 전략을 제안할 수 있다.
 
 ---
 
@@ -111,6 +114,99 @@ RICE(Reach, Impact, Confidence, Effort) 같은 프레임워크로 정량화할 �
 
 배포 성공 기준과 롤백 기준을 사전에 문서화해야 운영 리스크를 줄일 수 있습니다.
 
+### 9) 데이터 계약(Data Contract)과 피처 일관성
+
+배포 후 성능 저하의 상당수는 모델이 아니라 입력 데이터 품질 문제에서 시작됩니다.  
+따라서 모델 버전과 함께 데이터 계약을 명시해야 합니다.
+
+필수 계약 항목:
+1. 컬럼 존재 여부와 타입
+2. 허용 범위(range)
+3. 결측률 상한(null ratio threshold)
+4. 범주형 값 집합
+5. 파생 피처 생성 규칙
+
+훈련 시점과 서빙 시점의 피처 생성 코드가 다르면 training-serving skew가 발생하므로,  
+가능하면 동일한 변환 파이프라인을 공유해야 합니다.
+
+### 10) 모델 레지스트리와 버전 전략
+
+모델 파일만 보관하면 운영 추적이 어렵습니다.  
+아래 메타데이터를 같이 저장해야 "어떤 모델이 왜 배포됐는지" 설명 가능합니다.
+
+- model_version
+- data_version
+- code_version(commit hash)
+- train config
+- 주요 지표 + 신뢰구간
+- 승인자/승인시각
+- 배포 대상 환경(staging/prod)
+
+즉, 모델 배포는 파일 업로드가 아니라 변경 이력 관리 프로세스입니다.
+
+### 11) SLI/SLO와 Error Budget
+
+운영에서는 성능 수치만이 아니라 서비스 품질 목표가 필요합니다.
+
+- SLI(측정값): p95 latency, 오류율, 정책위반율
+- SLO(목표): 예) p95<800ms, 오류율<1%
+- Error Budget: 허용 가능한 실패량
+
+Error Budget을 소진하면 신규 릴리스보다 안정화 작업을 우선하는 정책이 필요합니다.
+
+### 12) 오프라인-온라인 갭 관리
+
+오프라인 평가가 좋아도 온라인 KPI가 나쁜 경우가 자주 발생합니다.
+
+주요 원인:
+- 입력 분포 변화(data drift)
+- 라벨 지연(label delay)
+- 사용자 행동 피드백 루프
+- 실제 비용 함수와 평가 지표 불일치
+
+대응:
+1. shadow/canary로 단계적 검증
+2. 온라인 이벤트 로그 기반 재평가
+3. 임계값 동적 조정
+4. 지표 재정의(업무 KPI 중심)
+
+### 13) 재학습 오케스트레이션
+
+재학습은 정기 배치만으로 충분하지 않습니다.  
+이벤트 기반 트리거와 운영 정책을 함께 설계해야 합니다.
+
+트리거 예시:
+- PSI > 0.2
+- 2주 연속 핵심 KPI 하락
+- 신규 라벨 데이터 누적 20% 이상
+- 정책 위반률 증가
+
+재학습 파이프라인은 학습 -> 검증 -> 릴리스 게이트 -> 단계 배포까지 자동화되어야 합니다.
+
+### 14) 실험과 A/B 검정의 함정
+
+단순 평균 비교로 A/B 승자를 정하면 오판 가능성이 큽니다.
+
+주의점:
+- 실험 기간 부족(계절성 미반영)
+- 동시 다중 실험 간 간섭
+- 샘플 불균형
+- 지표 다중 비교로 인한 유의성 착시
+
+가능하면 신뢰구간/검정력(power)/중지 규칙(stopping rule)을 사전에 정의해야 합니다.
+
+### 15) 운영 문서 체계
+
+실무에서는 코드보다 문서가 사고를 줄입니다.
+
+필수 문서:
+- Runbook(장애 대응 절차)
+- Release Note(변경 요약/리스크)
+- Postmortem(사고 회고)
+- KPI 주간 리포트(모델/서비스 통합)
+
+문서화가 잘 된 팀은 모델 교체 속도보다 장애 복구 속도가 빠릅니다.
+
 ---
 
 ## 실무에서 자주 틀리는 포인트
@@ -119,7 +215,11 @@ RICE(Reach, Impact, Confidence, Effort) 같은 프레임워크로 정량화할 �
 2. 베이스라인 없이 복잡 모델부터 적용  
 3. 결과는 저장하지만 설정(seed/버전)은 저장하지 않음  
 4. 배포 후 성능 모니터링 미구축  
-5. 실패 사례 분석 없이 모델만 교체
+5. 실패 사례 분석 없이 모델만 교체  
+6. 데이터 계약 없이 API 스펙 변경  
+7. 모델 버전은 있으나 데이터/코드 버전 누락  
+8. 오프라인 성능만으로 배포 승인  
+9. Error Budget 정책 없이 릴리스 빈도만 증가
 
 ---
 
@@ -230,6 +330,152 @@ append_experiment_log(
 )
 ```
 
+데이터 계약(schema/range/null ratio) 검증 예시:
+
+```python
+import pandas as pd
+
+EXPECTED_SCHEMA = {
+    "age": {"dtype": "float", "min": 0, "max": 120, "null_ratio_max": 0.05},
+    "usage_time": {"dtype": "float", "min": 0, "max": 1_000_000, "null_ratio_max": 0.1},
+    "plan_type": {"dtype": "object", "allowed": {"basic", "pro", "enterprise"}, "null_ratio_max": 0.02},
+}
+
+def validate_data_contract(df: pd.DataFrame, schema: dict) -> list[str]:
+    errors = []
+    for col, rule in schema.items():
+        if col not in df.columns:
+            errors.append(f"{col}: missing column")
+            continue
+
+        null_ratio = df[col].isna().mean()
+        if null_ratio > rule.get("null_ratio_max", 1.0):
+            errors.append(f"{col}: null_ratio {null_ratio:.3f} > {rule['null_ratio_max']}")
+
+        if rule["dtype"] == "float":
+            s = pd.to_numeric(df[col], errors="coerce")
+            if s.min(skipna=True) < rule["min"] or s.max(skipna=True) > rule["max"]:
+                errors.append(f"{col}: out of range")
+        elif rule["dtype"] == "object":
+            allowed = rule.get("allowed")
+            if allowed is not None:
+                invalid = set(df[col].dropna().astype(str)) - set(allowed)
+                if invalid:
+                    errors.append(f"{col}: invalid categories {invalid}")
+
+    return errors
+```
+
+PSI 기반 drift 탐지 예시:
+
+```python
+import numpy as np
+
+def psi(expected: np.ndarray, actual: np.ndarray, bins: int = 10) -> float:
+    eps = 1e-6
+    q = np.linspace(0, 1, bins + 1)
+    cut = np.quantile(expected, q)
+    cut[0], cut[-1] = -np.inf, np.inf
+    e_hist, _ = np.histogram(expected, bins=cut)
+    a_hist, _ = np.histogram(actual, bins=cut)
+    e_ratio = e_hist / max(e_hist.sum(), 1) + eps
+    a_ratio = a_hist / max(a_hist.sum(), 1) + eps
+    return float(np.sum((a_ratio - e_ratio) * np.log(a_ratio / e_ratio)))
+
+# 예시
+rng = np.random.default_rng(42)
+train_feature = rng.normal(0, 1, 5000)
+serving_feature = rng.normal(0.4, 1.2, 5000)
+psi_value = psi(train_feature, serving_feature)
+print("psi:", round(psi_value, 4))
+```
+
+릴리스 게이트(품질+안정성+비용) 예시:
+
+```python
+def can_promote(metrics: dict) -> bool:
+    """
+    metrics 예시:
+    {
+      "f1": 0.91,
+      "f1_ci_low": 0.89,
+      "policy_violation_rate": 0.002,
+      "p95_latency_ms": 640,
+      "psi_max": 0.16
+    }
+    """
+    return (
+        metrics["f1_ci_low"] >= 0.88
+        and metrics["policy_violation_rate"] <= 0.005
+        and metrics["p95_latency_ms"] <= 800
+        and metrics["psi_max"] <= 0.2
+    )
+
+candidate = {
+    "f1": 0.91,
+    "f1_ci_low": 0.89,
+    "policy_violation_rate": 0.003,
+    "p95_latency_ms": 700,
+    "psi_max": 0.12,
+}
+print("promote:", can_promote(candidate))
+```
+
+모델 레지스트리 메타데이터 기록 예시:
+
+```python
+import json
+from pathlib import Path
+from datetime import datetime
+
+def register_model(registry_path: str, metadata: dict) -> None:
+    path = Path(registry_path)
+    path.parent.mkdir(parents=True, exist_ok=True)
+    row = {
+        "registered_at": datetime.utcnow().isoformat(),
+        **metadata,
+    }
+    with open(path, "a", encoding="utf-8") as f:
+        f.write(json.dumps(row, ensure_ascii=False) + "\n")
+
+register_model(
+    "artifacts/model_registry.jsonl",
+    {
+        "model_version": "v1.2.0",
+        "data_version": "dataset_2026_02",
+        "code_version": "commit_hash_example",
+        "f1": 0.91,
+        "f1_ci_low": 0.89,
+        "approved_by": "ml_lead",
+        "target_env": "staging",
+    },
+)
+print("model registered")
+```
+
+A/B uplift 신뢰구간(bootstrap) 예시:
+
+```python
+import numpy as np
+
+def bootstrap_uplift_ci(control: np.ndarray, treatment: np.ndarray, n_boot: int = 1000):
+    rng = np.random.default_rng(42)
+    uplifts = []
+    n_c, n_t = len(control), len(treatment)
+    for _ in range(n_boot):
+        c = control[rng.integers(0, n_c, n_c)]
+        t = treatment[rng.integers(0, n_t, n_t)]
+        uplifts.append(t.mean() - c.mean())
+    lo, hi = np.percentile(uplifts, [2.5, 97.5])
+    return float(np.mean(uplifts)), float(lo), float(hi)
+
+# 예시: 클릭 여부(0/1) 또는 전환율 지표
+control = np.array([0, 1, 0, 0, 1, 0, 1, 0, 0, 1])
+treatment = np.array([1, 1, 0, 1, 1, 0, 1, 1, 0, 1])
+mean_uplift, lo, hi = bootstrap_uplift_ci(control, treatment)
+print("uplift_mean:", round(mean_uplift, 4), "95%CI:", (round(lo, 4), round(hi, 4)))
+```
+
 ---
 
 ## 미니 과제
@@ -237,7 +483,11 @@ append_experiment_log(
 1. 본인 프로젝트 ProblemDefinition을 실제로 작성  
 2. 베이스라인 모델 1개 구현 후 metrics.json 저장  
 3. 실험 로그 CSV에 3회 이상 실험 결과 누적  
-4. 성능 개선 가설 3개와 우선순위 작성
+4. 성능 개선 가설 3개와 우선순위 작성  
+5. 데이터 계약 문서와 검증 코드 작성  
+6. PSI 기반 drift 알람 임계값 정책 정의  
+7. 릴리스 게이트 기준표(품질/안전/비용) 작성  
+8. 장애 runbook 초안 작성(탐지->완화->복구)
 
 ---
 
@@ -247,6 +497,10 @@ append_experiment_log(
 - Iteration, Ablation, Reproducibility
 - Data Drift, Concept Drift, Monitoring
 - Model Card, Experiment Log, Rollback
+- Data Contract, Training-Serving Skew, Feature Store
+- Model Registry, SLI/SLO, Error Budget
+- Canary, Shadow, A/B Test, Release Gate
+- PSI, Confidence Interval, Runbook
 
 ---
 
@@ -256,6 +510,7 @@ append_experiment_log(
 - [Made With ML](https://madewithml.com/)
 - 도서: `Designing Machine Learning Systems`
 - 도서: `Machine Learning Engineering`
+- 도서: `Building Machine Learning Powered Applications`
 
 ---
 
@@ -265,7 +520,10 @@ append_experiment_log(
 2. 베이스라인 성능을 기준으로 개선 여부를 어떻게 판정할 것인가?  
 3. 실험 우선순위를 정량적으로 정하는 방법을 설명할 수 있는가?  
 4. 배포 전략(Canary/A-B/Shadow)의 선택 기준을 설명할 수 있는가?  
-5. 롤백 조건을 사전에 정의하지 않으면 어떤 위험이 생기는가?
+5. 데이터 계약이 없는 상태에서 발생할 대표 장애는 무엇인가?  
+6. 오프라인 성능과 온라인 KPI가 충돌할 때 어떤 절차로 판단할 것인가?  
+7. 릴리스 게이트에 포함해야 할 최소 지표 4가지는 무엇인가?  
+8. 롤백 조건을 사전에 정의하지 않으면 어떤 위험이 생기는가?
 
 ---
 
