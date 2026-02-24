@@ -18,7 +18,10 @@
 2. 재현 실험의 변수(데이터/코드/설정/시드)를 통제할 수 있다.  
 3. ablation과 비교 실험을 통해 기여도를 분해할 수 있다.  
 4. 통계적 신뢰구간을 포함한 결과 해석을 수행할 수 있다.  
-5. 재현 패키지(코드/환경/리포트)를 팀 공유 가능한 형태로 구성할 수 있다.
+5. 재현 패키지(코드/환경/리포트)를 팀 공유 가능한 형태로 구성할 수 있다.  
+6. 가설검정, 효과크기, 다중비교 보정을 실험 해석에 적용할 수 있다.  
+7. 실험 계보(lineage)를 추적 가능한 형태로 기록할 수 있다.  
+8. 벤치마크 성능과 실제 배포 성능 간 차이를 설명할 수 있다.
 
 ---
 
@@ -100,6 +103,86 @@ baseline과 제안 모델 모두 유사한 탐색 예산을 배정해야 공정�
 - 데이터 권리/라이선스 준수
 - 결과 과장 표현 지양
 
+### 9) 통계 검정 심화: 유의성 + 효과크기
+
+재현 연구에서 "유의하다"와 "실무적으로 의미 있다"는 다를 수 있습니다.  
+따라서 p-value와 함께 효과크기(effect size), 신뢰구간을 반드시 함께 제시해야 합니다.
+
+- paired t-test / Wilcoxon / permutation test
+- Cohen's d, Cliff's delta 같은 효과크기
+- 평균 차이뿐 아니라 분산/안정성까지 해석
+
+### 10) 다중 비교와 p-hacking 방지
+
+ablation이나 다수 baseline을 동시에 비교하면 우연히 좋은 결과가 나올 확률이 올라갑니다.  
+이때는 Bonferroni 또는 Benjamini-Hochberg(FDR) 보정을 적용해야 합니다.
+
+실무 원칙:
+1. 사전에 가설과 1차 지표를 명시(pre-registration)
+2. 실험 종료 후 지표 추가/변경 시 이유 기록
+3. 부정 결과(negative result)도 동일 형식으로 보고
+
+### 11) 실험 계보(Lineage)와 추적성
+
+다음 메타데이터가 없으면 결과 재현이 거의 불가능해집니다.
+
+- git commit hash
+- 데이터셋 버전/해시
+- 실행 환경(python/package/cuda)
+- config 원본과 변경 이력
+- random seed와 실행 시각
+
+### 12) 재현성 등급 관리
+
+재현성은 "성공/실패" 이분법보다 등급으로 관리하는 편이 현실적입니다.
+
+- Level 1: 동일 코드/동일 환경에서 동일 결과
+- Level 2: 동일 코드/유사 환경에서 허용 오차 내 결과
+- Level 3: 독립 구현에서도 추세 재현
+
+레벨을 명시하면 팀 내 기대치와 리뷰 기준이 명확해집니다.
+
+### 13) 외적 타당성(External Validity)
+
+벤치마크 성능이 높아도 실제 환경에서 성능이 유지된다는 보장은 없습니다.
+
+- 데이터 수집 경로 차이
+- 라벨 품질 차이
+- 클래스 비율/노이즈 차이
+- 사용자 행동 변화(시간 드리프트)
+
+따라서 재현 단계에서도 "실사용 분포 유사 검증셋"을 별도 운영하는 것이 좋습니다.
+
+### 14) 컴퓨트 예산과 비용 보고
+
+연구 품질은 정확도만이 아니라 비용 효율로도 평가되어야 합니다.
+
+- 학습 시간, GPU 시간, 전력/비용 추정
+- 성능 대비 비용 곡선
+- 동일 예산에서의 비교(공정성)
+
+### 15) 재현 보고서 구조화
+
+좋은 재현 보고서는 결과표만이 아니라 의사결정 근거를 남깁니다.
+
+필수 섹션:
+1. 연구 질문/가설
+2. 통제 변수와 실험 설계
+3. 주요 결과(평균+CI+효과크기)
+4. 실패/예외 사례
+5. 다음 실험 우선순위
+
+---
+
+## 연구 재현 운영 체크리스트 (실무형)
+
+- [ ] baseline/proposed에 동일 튜닝 예산을 배정했다.
+- [ ] 시드 5개 이상으로 평균/표준편차/CI를 기록했다.
+- [ ] 다중 비교 보정 규칙(FDR/Bonferroni)을 문서화했다.
+- [ ] 코드/데이터/환경 해시를 아티팩트에 저장했다.
+- [ ] 실패 실험도 동일 포맷으로 리포트에 포함했다.
+- [ ] 재현 레벨(Level 1~3)과 한계를 명시했다.
+
 ---
 
 ## 실무에서 자주 틀리는 포인트
@@ -108,7 +191,10 @@ baseline과 제안 모델 모두 유사한 탐색 예산을 배정해야 공정�
 2. baseline보다 제안 모델에만 튜닝 예산 집중  
 3. 단일 시드 결과를 최종 결론으로 사용  
 4. 실패 실험을 기록하지 않아 반복 실수 발생  
-5. 재현 코드를 문서 없이 공유해 팀 전파 실패
+5. 재현 코드를 문서 없이 공유해 팀 전파 실패  
+6. test set을 반복 튜닝에 사용해 누수 발생  
+7. 가장 좋은 1회 실험만 선택해 보고(cherry-picking)  
+8. 비용/시간 예산 없이 재현 시도 후 중단
 
 ---
 
@@ -200,6 +286,96 @@ Path("artifacts/reproduction_report.md").write_text(report, encoding="utf-8")
 print("report saved")
 ```
 
+효과크기(Cohen's d) + 순열검정(permutation test) 예시:
+
+```python
+import numpy as np
+
+
+def cohens_d(a: np.ndarray, b: np.ndarray) -> float:
+    # paired 기준 차이 벡터의 표준화 효과크기
+    diff = a - b
+    std = np.std(diff, ddof=1)
+    if std == 0:
+        return 0.0
+    return float(np.mean(diff) / std)
+
+
+def permutation_test_pvalue(a: np.ndarray, b: np.ndarray, n_perm: int = 5000, seed: int = 42) -> float:
+    rng = np.random.default_rng(seed)
+    observed = float(np.mean(a - b))
+    diff = a - b
+    extreme = 0
+    for _ in range(n_perm):
+        signs = rng.choice([-1, 1], size=len(diff))
+        perm = float(np.mean(diff * signs))
+        if abs(perm) >= abs(observed):
+            extreme += 1
+    return (extreme + 1) / (n_perm + 1)
+
+
+d = cohens_d(np.array(base_scores), np.array(abl_scores))
+p = permutation_test_pvalue(np.array(base_scores), np.array(abl_scores))
+print("cohens_d:", round(d, 4), "perm_pvalue:", round(p, 6))
+```
+
+다중 비교 보정(Benjamini-Hochberg, FDR) 예시:
+
+```python
+import numpy as np
+
+
+def benjamini_hochberg(pvals: list[float], alpha: float = 0.05):
+    p = np.array(pvals, dtype=float)
+    n = len(p)
+    order = np.argsort(p)
+    ranked = p[order]
+    thresholds = alpha * (np.arange(1, n + 1) / n)
+    passed = ranked <= thresholds
+    if not np.any(passed):
+        return [False] * n
+    k = np.max(np.where(passed)[0])
+    cutoff = ranked[k]
+    return [pv <= cutoff for pv in p]
+
+
+pvals = [0.001, 0.02, 0.031, 0.07, 0.2]
+print("fdr_significant:", benjamini_hochberg(pvals, alpha=0.05))
+```
+
+실험 매니페스트(코드/데이터/환경 해시) 저장 예시:
+
+```python
+import hashlib
+import json
+from pathlib import Path
+import platform
+
+
+def sha256_bytes(data: bytes) -> str:
+    return hashlib.sha256(data).hexdigest()
+
+
+def save_manifest(path: str, config: dict, data_sample: bytes) -> None:
+    manifest = {
+        "config": config,
+        "config_hash": sha256_bytes(json.dumps(config, sort_keys=True).encode("utf-8")),
+        "data_hash": sha256_bytes(data_sample),
+        "python_version": platform.python_version(),
+        "platform": platform.platform(),
+    }
+    Path(path).parent.mkdir(parents=True, exist_ok=True)
+    Path(path).write_text(json.dumps(manifest, ensure_ascii=False, indent=2), encoding="utf-8")
+
+
+save_manifest(
+    "artifacts/manifest.json",
+    {"model": "logreg", "seed_list": [11, 22, 33, 44, 55], "metric": "f1"},
+    b"sample_bytes_for_dataset_versioning",
+)
+print("manifest saved")
+```
+
 ---
 
 ## 미니 과제
@@ -207,7 +383,10 @@ print("report saved")
 1. 논문 1편을 골라 기여/한계/재현 난점을 1페이지로 요약  
 2. baseline/proposed를 동일 튜닝 예산으로 비교  
 3. 시드 5개 이상으로 평균+신뢰구간 리포트 작성  
-4. ablation 항목 3개 이상 설계하고 기여도 해석
+4. ablation 항목 3개 이상 설계하고 기여도 해석  
+5. 효과크기 + permutation test 결과를 함께 보고  
+6. 다중 비교 보정(FDR) 적용 전/후 결론 차이 비교  
+7. manifest(코드/데이터/환경 해시) 자동 저장 파이프라인 구성
 
 ---
 
@@ -217,6 +396,9 @@ print("report saved")
 - Ablation, Baseline, Fair Comparison
 - Confidence Interval, Bootstrap, Paired Test
 - Experiment Registry, Artifact, Report
+- Effect Size, Permutation Test, Multiple Comparison
+- Lineage, Manifest, External Validity
+- Pre-registration, Negative Result, Cherry-picking
 
 ---
 
@@ -226,6 +408,7 @@ print("report saved")
 - [ML Reproducibility Checklist](https://www.cs.mcgill.ca/~jpineau/ReproducibilityChecklist.pdf)
 - 도서: `The Elements of Statistical Learning`
 - 도서: `Deep Learning` (실험 설계/최적화 장)
+- 도서: `Designing Machine Learning Systems`
 
 ---
 
@@ -235,7 +418,10 @@ print("report saved")
 2. 공정한 baseline 비교를 위해 통제해야 할 변수는 무엇인가?  
 3. 단일 시드 결과를 신뢰하면 위험한 이유는 무엇인가?  
 4. ablation에서 기여도를 해석할 때 주의할 점은 무엇인가?  
-5. 연구 결과를 팀/조직에서 재사용 가능하게 만들기 위한 최소 산출물은 무엇인가?
+5. 효과크기와 p-value를 함께 봐야 하는 이유는 무엇인가?  
+6. 다중 비교 보정을 하지 않으면 어떤 오판이 생기는가?  
+7. external validity를 점검하지 않은 연구 결과의 위험은 무엇인가?  
+8. 연구 결과를 팀/조직에서 재사용 가능하게 만들기 위한 최소 산출물은 무엇인가?
 
 ---
 
