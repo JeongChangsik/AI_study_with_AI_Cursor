@@ -16,7 +16,9 @@
 2. 문제정의 4요소(Task/Input/Output/Metric)를 직접 작성할 수 있다.  
 3. 지도/비지도/자기지도학습의 차이를 이해하고 예시를 들 수 있다.  
 4. Train/Validation/Test 분할과 데이터 누수 위험을 설명할 수 있다.  
-5. 분류/회귀 문제에서 기본 지표를 올바르게 고를 수 있다.
+5. 분류/회귀 문제에서 기본 지표를 올바르게 고를 수 있다.  
+6. 지능형 에이전트 관점(PEAS)을 이용해 문제를 구조화할 수 있다.  
+7. 혼동행렬 기반으로 오류를 해석하고 임계값 조정 방향을 제안할 수 있다.
 
 ---
 
@@ -101,6 +103,51 @@ AI는 가장 큰 범주이고, ML은 데이터에서 규칙을 학습하는 AI �
 3. 최소 2개 이상 지표 기록
 4. 누수 점검 체크리스트 포함
 
+### 8) 지능형 에이전트 관점(PEAS)
+
+AI를 단순 예측기로만 보면 문제의 실제 맥락을 놓치기 쉽습니다.  
+AIMA(Artificial Intelligence: A Modern Approach)에서 강조하는 에이전트 관점은 문제를 다음처럼 구조화합니다.
+
+- **P (Performance Measure)**: 성공 기준
+- **E (Environment)**: 시스템이 동작하는 환경
+- **A (Actuators)**: 에이전트가 취할 행동/출력
+- **S (Sensors)**: 에이전트가 관측하는 입력
+
+이 틀을 사용하면 "모델 정확도"뿐 아니라 운영 조건, 의사결정 방식, 실패 비용까지 함께 설계할 수 있습니다.
+
+### 9) 데이터 중심 AI(Data-centric AI) 기초
+
+초급 단계에서 자주 간과되지만, 모델보다 데이터가 성능을 더 크게 좌우하는 경우가 많습니다.
+
+핵심 포인트:
+1. 라벨 품질: 라벨 오류/불일치 점검
+2. 대표성: 실제 운영 분포를 반영하는 샘플 구성
+3. 누락 특성: 중요한 변수 미수집 여부
+4. 데이터 문서화: 수집 방법/시점/제약 조건 기록
+
+좋은 데이터셋은 "크기"보다 "정확성/일관성/대표성"이 중요합니다.
+
+### 10) 학습 패러다임 4가지 구분
+
+- **지도학습**: 라벨이 있는 데이터로 학습
+- **비지도학습**: 라벨 없이 구조 탐색
+- **자기지도학습**: 데이터 자체로 학습 신호 생성
+- **강화학습**: 보상 신호를 최대화하는 정책 학습
+
+1단계에서는 최소한 "어떤 문제에 어떤 패러다임이 맞는지"를 구분할 수 있어야 합니다.
+
+### 11) 혼동행렬(Confusion Matrix)과 오류 비용
+
+모델이 어디서 틀리는지를 보려면 혼동행렬이 필요합니다.
+
+- TP: 양성을 양성으로 예측
+- TN: 음성을 음성으로 예측
+- FP: 음성을 양성으로 잘못 예측(오탐)
+- FN: 양성을 음성으로 놓침(미탐)
+
+실무에서는 FP와 FN의 비용이 다릅니다.  
+예를 들어 의료 진단에서는 FN 비용이 매우 커서 Recall을 우선하는 경우가 많습니다.
+
 ---
 
 ## 실무에서 자주 틀리는 포인트
@@ -109,7 +156,9 @@ AI는 가장 큰 범주이고, ML은 데이터에서 규칙을 학습하는 AI �
 2. Validation 없이 Test를 반복 조회  
 3. 문제정의 없이 모델부터 구현  
 4. 시간 순서가 있는 데이터를 랜덤 분할  
-5. 전처리를 분할 전에 전체 데이터에 적용
+5. 전처리를 분할 전에 전체 데이터에 적용  
+6. FP/FN 비용 차이를 고려하지 않고 임계값을 고정  
+7. 데이터 품질 점검 없이 알고리즘만 교체
 
 ---
 
@@ -174,13 +223,31 @@ for k, v in metrics.items():
     print(f"{k}: {v:.4f}")
 ```
 
+혼동행렬과 임계값 변화 분석 예시:
+
+```python
+import numpy as np
+from sklearn.metrics import confusion_matrix, precision_score, recall_score
+
+thresholds = np.linspace(0.1, 0.9, 9)
+print("thr | precision | recall | tn fp fn tp")
+for thr in thresholds:
+    pred_thr = (proba >= thr).astype(int)
+    tn, fp, fn, tp = confusion_matrix(y_test, pred_thr).ravel()
+    p = precision_score(y_test, pred_thr, zero_division=0)
+    r = recall_score(y_test, pred_thr, zero_division=0)
+    print(f"{thr:.1f} | {p:.4f}    | {r:.4f} | {tn:2d} {fp:2d} {fn:2d} {tp:2d}")
+```
+
 ---
 
 ## 미니 과제
 
 1. 위 코드의 `ProblemCard`를 본인 아이디어로 바꿔 작성하기  
 2. 지표 우선순위를 "정확도 중심"과 "재현율 중심"으로 각각 비교 이유 적기  
-3. 데이터 누수 사례 2개를 실제 서비스 맥락으로 작성하기
+3. 데이터 누수 사례 2개를 실제 서비스 맥락으로 작성하기  
+4. 임계값 0.3/0.5/0.7에서 FP/FN 변화 표를 작성하기  
+5. 본인 프로젝트를 PEAS로 1페이지 정리하기
 
 ---
 
@@ -192,6 +259,8 @@ for k, v in metrics.items():
 - Train/Validation/Test
 - Generalization, Overfitting, Data Leakage
 - Precision, Recall, F1, ROC-AUC
+- Confusion Matrix, Threshold, Class Imbalance
+- PEAS, Data-centric AI, Label Quality
 
 ---
 
@@ -200,6 +269,8 @@ for k, v in metrics.items():
 - [Elements of AI](https://www.elementsofai.com/)
 - [Google Machine Learning Crash Course](https://developers.google.com/machine-learning/crash-course)
 - 도서: `핸즈온 머신러닝(3판)` 1~2장
+- 도서: `Artificial Intelligence: A Modern Approach` (에이전트/문제정의 관점)
+- 도서: `An Introduction to Statistical Learning` (평가와 일반화 기초)
 
 ---
 
@@ -209,7 +280,9 @@ for k, v in metrics.items():
 2. 문제정의 4요소(Task/Input/Output/Metric)가 빠진 상태에서 발생할 실패 사례는 무엇인가?  
 3. 데이터 누수 3가지 유형(Target/Time/Preprocessing)을 각각 구분할 수 있는가?  
 4. 임계값을 조정하면 Precision/Recall이 어떻게 바뀌는지 설명할 수 있는가?  
-5. 내 프로젝트의 베이스라인 설계안을 1페이지로 작성했는가?
+5. 혼동행렬에서 FP/FN의 비즈니스 비용 차이를 설명할 수 있는가?  
+6. 내 프로젝트를 PEAS 틀로 구조화할 수 있는가?  
+7. 데이터 중심 AI 관점에서 현재 데이터셋의 취약점을 3가지 이상 찾을 수 있는가?
 
 ---
 
