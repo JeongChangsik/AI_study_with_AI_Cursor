@@ -4,26 +4,216 @@
 
 ## 개요
 
-7단계는 앞에서 학습한 이론을 실제 내 프로젝트에 적용하는 단계입니다.  
-문제정의부터 베이스라인 구축, 오류 분석, 개선 실험까지 한 사이클을 반복합니다.
+7단계는 이론 학습을 실제 제품/서비스 개발로 연결하는 단계입니다.  
+핵심은 "정확한 문제정의 + 재현 가능한 실험 + 운영 가능한 배포"를 한 흐름으로 만드는 것입니다.
+
+---
+
+## 학습 목표
+
+1. 프로젝트 문제정의 문서를 작성할 수 있다.  
+2. 베이스라인 모델을 만들고 성능 기준선을 확보할 수 있다.  
+3. 실험 기록 체계(파라미터/데이터 버전/결과)를 운영할 수 있다.  
+4. 배포 후 모니터링과 재학습 조건을 정의할 수 있다.
 
 ---
 
 ## 꼭 알아야 할 핵심 설명 (서술형)
 
-AI 프로젝트에서 가장 먼저 해야 할 일은 모델 선택이 아니라 문제를 명확히 정의하는 것입니다. 사용자, 입력, 출력, 평가 지표를 한 문단으로 정리하면 불필요한 실험을 크게 줄일 수 있습니다.
+AI 프로젝트는 모델링보다 의사결정 시스템에 가깝습니다.  
+어떤 문제를 해결하는지, 실패 시 비용이 무엇인지, 어떤 지표를 성공으로 볼지 먼저 정해야 시행착오를 줄일 수 있습니다.
 
-베이스라인 모델은 "최소 기준선" 역할을 합니다. 복잡한 모델로 바로 뛰어들기보다 단순한 모델로 현재 성능을 확보해야 개선의 효과를 객관적으로 판단할 수 있습니다.
+베이스라인은 단순하지만 매우 중요합니다.  
+기준선이 없으면 "개선"인지 "우연"인지 판단할 수 없고, 복잡한 모델이 실제로 이득인지도 알 수 없습니다.
 
-실험은 한 번에 하나의 변수만 바꾸는 것이 원칙입니다. 전처리, 모델, 하이퍼파라미터를 동시에 바꾸면 성능 변화 원인을 알 수 없어 재현성이 떨어집니다. 따라서 실험 기록과 오류 분석이 품질 향상의 핵심 자산이 됩니다.
+실험은 기록이 남아야 자산이 됩니다.  
+데이터 버전, 전처리 방식, 모델/파라미터, 시드, 결과 지표를 함께 저장해야 재현성이 확보되고 팀 협업이 쉬워집니다.
+
+배포 이후에는 데이터 분포 변화(Data Drift), 개념 변화(Concept Drift), 오류 유형 변화가 발생합니다.  
+따라서 모델 개발의 끝은 배포가 아니라, 모니터링과 개선 루프를 운영하는 것입니다.
+
+---
+
+## 세부 이론
+
+### 1) 문제정의 문서(Problem Definition Card)
+
+필수 항목:
+1. 비즈니스 목표
+2. 예측 대상/단위
+3. 입력 데이터 범위
+4. 성공 지표(기술+비즈니스)
+5. 실패 허용 범위
+6. 윤리/법적 제약
+
+### 2) 베이스라인 전략
+
+- 단순 모델 우선(로지스틱 회귀/의사결정나무)
+- 데이터 누수 검증 후 평가
+- 최소 기준선(KPI Threshold) 설정
+
+### 3) 실험 설계 원칙
+
+- 한 번에 한 변수만 변경(Ablation)
+- 동일 seed로 비교
+- 교차검증 또는 고정 validation split
+- 결과 표준 양식으로 저장
+
+### 4) 배포와 모니터링
+
+모니터링 항목:
+- 입력 분포 변화(피처 통계)
+- 출력 분포 변화(예측 확률)
+- 지표 저하(정확도/F1/업무 KPI)
+- 오류 케이스 누적 패턴
+
+재학습 트리거 예시:
+- 2주 연속 KPI 5% 이상 하락
+- 핵심 피처 분포 PSI > 0.2
+- 신규 데이터 20% 이상 축적
+
+### 5) 문서화 표준
+
+- 실험 로그: 날짜, 데이터버전, 코드버전, 파라미터, 지표
+- 모델 카드: 용도, 한계, 금지 사용 시나리오
+- 운영 가이드: 장애 대응, 롤백 기준, 점검 주기
+
+---
+
+## 실무에서 자주 틀리는 포인트
+
+1. 문제정의 없이 모델 튜닝부터 시작  
+2. 베이스라인 없이 복잡 모델부터 적용  
+3. 결과는 저장하지만 설정(seed/버전)은 저장하지 않음  
+4. 배포 후 성능 모니터링 미구축  
+5. 실패 사례 분석 없이 모델만 교체
+
+---
+
+## Python 샘플 코드 (프로젝트 베이스라인 템플릿)
+
+```python
+from dataclasses import dataclass, asdict
+from pathlib import Path
+import json
+import time
+
+import numpy as np
+from sklearn.datasets import load_breast_cancer
+from sklearn.model_selection import train_test_split
+from sklearn.pipeline import Pipeline
+from sklearn.preprocessing import StandardScaler
+from sklearn.linear_model import LogisticRegression
+from sklearn.metrics import f1_score, roc_auc_score
+
+
+@dataclass
+class ProblemDefinition:
+    project_name: str
+    task: str
+    input_desc: str
+    output_desc: str
+    primary_metric: str
+    secondary_metric: str
+
+
+def save_json(path: str, data: dict) -> None:
+    Path(path).parent.mkdir(parents=True, exist_ok=True)
+    with open(path, "w", encoding="utf-8") as f:
+        json.dump(data, f, ensure_ascii=False, indent=2)
+
+
+def run_baseline(random_state: int = 42) -> dict:
+    X, y = load_breast_cancer(return_X_y=True)
+    X_train, X_test, y_train, y_test = train_test_split(
+        X, y, test_size=0.2, stratify=y, random_state=random_state
+    )
+
+    model = Pipeline(
+        steps=[
+            ("scaler", StandardScaler()),
+            ("clf", LogisticRegression(max_iter=3000, random_state=random_state)),
+        ]
+    )
+    model.fit(X_train, y_train)
+    pred = model.predict(X_test)
+    proba = model.predict_proba(X_test)[:, 1]
+
+    return {
+        "f1": float(f1_score(y_test, pred)),
+        "roc_auc": float(roc_auc_score(y_test, proba)),
+    }
+
+
+if __name__ == "__main__":
+    problem = ProblemDefinition(
+        project_name="cancer_baseline",
+        task="악성/양성 분류",
+        input_desc="검사 수치 30개",
+        output_desc="악성 확률 및 클래스",
+        primary_metric="f1",
+        secondary_metric="roc_auc",
+    )
+
+    metrics = run_baseline(random_state=42)
+    run_id = f"run_{int(time.time())}"
+    artifact_dir = f"artifacts/{run_id}"
+
+    save_json(f"{artifact_dir}/problem_definition.json", asdict(problem))
+    save_json(f"{artifact_dir}/metrics.json", metrics)
+
+    print("run_id:", run_id)
+    print("metrics:", metrics)
+```
+
+실험 비교용 간단 로거:
+
+```python
+import csv
+from pathlib import Path
+
+
+def append_experiment_log(path: str, row: dict) -> None:
+    Path(path).parent.mkdir(parents=True, exist_ok=True)
+    file_exists = Path(path).exists()
+    with open(path, "a", encoding="utf-8", newline="") as f:
+        writer = csv.DictWriter(f, fieldnames=row.keys())
+        if not file_exists:
+            writer.writeheader()
+        writer.writerow(row)
+
+
+append_experiment_log(
+    "artifacts/experiment_log.csv",
+    {
+        "date": "2026-02-25",
+        "model": "logistic_regression",
+        "feature_set": "v1",
+        "seed": 42,
+        "f1": 0.97,
+        "roc_auc": 0.99,
+        "note": "baseline",
+    },
+)
+```
+
+---
+
+## 미니 과제
+
+1. 본인 프로젝트 ProblemDefinition을 실제로 작성  
+2. 베이스라인 모델 1개 구현 후 metrics.json 저장  
+3. 실험 로그 CSV에 3회 이상 실험 결과 누적  
+4. 성능 개선 가설 3개와 우선순위 작성
 
 ---
 
 ## 핵심 용어
 
-- Task Definition, Baseline, Iteration
-- Error Analysis, Ablation, Reproducibility
-- Validation Strategy, Experiment Log
+- Problem Definition, Baseline, KPI
+- Iteration, Ablation, Reproducibility
+- Data Drift, Concept Drift, Monitoring
+- Model Card, Experiment Log, Rollback
 
 ---
 
@@ -32,13 +222,16 @@ AI 프로젝트에서 가장 먼저 해야 할 일은 모델 선택이 아니라
 - [Full Stack Deep Learning](https://fullstackdeeplearning.com/)
 - [Made With ML](https://madewithml.com/)
 - 도서: `Designing Machine Learning Systems`
+- 도서: `Machine Learning Engineering`
 
 ---
 
 ## 날짜별 학습 기록
 
-### 첫 작성 상태
-- 다음 작성 시, 내 프로젝트 문제정의 카드와 베이스라인 설계안을 날짜별로 누적합니다.
+### 2026-02-26 (예정)
+- 문제정의 카드 작성
+- 베이스라인 모델 실행
+- 실험 로그 템플릿 구축
 
 ---
 
